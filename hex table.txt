@@ -1,0 +1,52 @@
+Keep a simple table (in comments or a separate doc) that shows which categories collide with which. This is your “street map” for masks.
+
+Bit position (LSB → MSB):
+...   6    5    4    3    2    1    0
+       |    |    |    |    |    |    |
+       |    |    |    |    |    |    └── 0x0001 = CATEGORY_BALL
+       |    |    |    |    |    └────── 0x0002 = CATEGORY_PUCK
+       |    |    |    |    └─────────── 0x0004 = CATEGORY_ARENA
+       |    |    |    └──────────────── 0x0008 = CATEGORY_SENSOR
+       |    |    └───────────────────── 0x0010 = CATEGORY_ATTRACTOR
+       |    └────────────────────────── 0x0020 = CATEGORY_BEARING
+       └─────────────────────────────── (future categories keep shifting left)
+
+
+📋 Category Reference Table
+Category	Constant	Hex	Binary (8‑bit shown)
+BALL	CATEGORY_BALL	0x0001	0000 0001
+PUCK	CATEGORY_PUCK	0x0002	0000 0010
+ARENA	CATEGORY_ARENA	0x0004	0000 0100
+SENSOR	CATEGORY_SENSOR	0x0008	0000 1000
+ATTRACTOR	CATEGORY_ATTRACTOR	0x0010	0001 0000
+BEARING	CATEGORY_BEARING	0x0020	0010 0000
+🔑 How to Read It
+Each category is a single bit turned on.
+
+A body’s collisionFilter.category = the “hat it wears.”
+
+A body’s collisionFilter.mask = the “hats it cares about.”
+
+Collision happens if (A.category & B.mask) !== 0 and (B.category & A.mask) !== 0.
+
+This diagram + your hex table together form a living reference artifact. Each time you add a new category, just shift left one bit (0x0040, 0x0080, etc.), update this diagram, and add a row to the table. That way you’ll never lose track of what collides with what.
+
+
+Collision Category Matrix (Current)
+Category	Hex/Bit	Collides With (mask includes…)
+BALL	0x0001	BALL, PUCK, ARENA, SENSOR, ATTRACTOR, BEARING
+PUCK	0x0002	BALL, PUCK, ARENA, SENSOR
+ARENA	0x0004	BALL, PUCK, BEARING
+SENSOR	0x0008	BALL, PUCK, BEARING
+ATTRACTOR	0x0010	BALL (but only pulls if ball.attracted = true)
+BEARING	0x0020	BALL, ARENA, SENSOR
+🔑 Notes
+BALL: Collides with everything except it ignores nothing — it sees bearings too, so balls bounce off bearings.
+
+PUCK: Now collides with other pucks (mask includes CATEGORY_PUCK), plus balls, arena, and sensors.
+
+BEARING: Isolated from puck bodies (mask excludes CATEGORY_PUCK), but still interacts with balls, arena, and sensors.
+
+ARENA & SENSOR: Both include bearings now, so wedge funnels or goal sensors can interact with bearings in the future.
+
+ATTRACTOR: Still only “sees” balls, and you gate the force with the ball.attracted flag.
