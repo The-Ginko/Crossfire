@@ -15,9 +15,9 @@ const config = {
   physics: {
     default: 'matter',
     matter: {
-      plugins: {
-        attractors: true
-      },
+      //plugins: {
+      //  attractors: true
+     // },
       gravity: { y: 0 },
       debug: {
         showBody: true,

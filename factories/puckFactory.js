@@ -8,7 +8,8 @@ import {
   CATEGORY_BEARING,
   CATEGORY_ARENA,
   CATEGORY_SENSOR,
-  CATEGORY_WEDGE
+  CATEGORY_WEDGE,
+  CATEGORY_REPULSOR
 } from '/src/config/collisionCategories.js';
 
 export function createStarPuck(scene, x, y) {
@@ -40,7 +41,7 @@ export function createStarPuck(scene, x, y) {
   // Collision filtering for puck body
   star.body.collisionFilter.category = CATEGORY_PUCK;
   star.body.collisionFilter.mask =
-    CATEGORY_BALL | CATEGORY_ARENA | CATEGORY_SENSOR | CATEGORY_PUCK;
+    CATEGORY_BALL | CATEGORY_ARENA | CATEGORY_SENSOR | CATEGORY_PUCK | CATEGORY_REPULSOR;
 
   // --- BEARING BODY ---
   const bearingRadius   = 64;
@@ -99,7 +100,7 @@ export function createTrianglePuck(scene, x, y) {
   // Collision filtering for puck body
   tri.body.collisionFilter.category = CATEGORY_PUCK;
   tri.body.collisionFilter.mask =
-    CATEGORY_BALL | CATEGORY_ARENA | CATEGORY_SENSOR | CATEGORY_PUCK;
+    CATEGORY_BALL | CATEGORY_ARENA | CATEGORY_SENSOR | CATEGORY_PUCK | CATEGORY_REPULSOR;
 
   // --- BEARING2 BODY ---
   const bearingRadius   = 64;

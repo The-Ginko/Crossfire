@@ -3,6 +3,7 @@ import { createStarPuck, createTrianglePuck } from '/factories/puckFactory.js';
 import { createArena } from '/factories/arenaFactory.js';
 import { createLauncher, } from '/factories/launcherFactory.js';
 import { createAttractor } from '/factories/attractorFactory.js';
+import { createRepulsor } from '/factories/repulsorFactory.js';
 
 export class PlayScene extends Phaser.Scene {
   constructor() {
@@ -11,6 +12,9 @@ export class PlayScene extends Phaser.Scene {
     this.scoreRight = 0;
     this.leftOccupied = false;
     this.rightOccupied = false;
+    this.gameState = 'playing'; // The game starts in a 'playing' state.
+    this.scoreLeftText = null;
+    this.scoreRightText = null;
   }
 
   preload() {
@@ -37,6 +41,13 @@ export class PlayScene extends Phaser.Scene {
     const ch = this.scale.height;
     const cx = cw / 2;
     const cy = ch / 2;
+    
+    //Ball measuring logic for setting constant
+    const sampleBall = this.add.sprite(-100, -100, 'ball0').setVisible(false);
+    const ballRadius = sampleBall.width / 2;
+    const ballDiameter = sampleBall.width;
+    sampleBall.destroy();
+
 
     // Mouse spring for dragging
     this.input.mouse?.disableContextMenu();
@@ -59,11 +70,40 @@ export class PlayScene extends Phaser.Scene {
 
     // Example: left and right trough attractors
     const troughHeight = arena.arenaHeight - 2 * arena.throatInset;
-    const troughWidth  = 10; // narrow strip down the centerline
-    const effectiveRadius = 100; // tune to taste
+    const effectiveRadius = 150; // The range for each point in the chain
+    
+    // Calculate the center of the left trough (behind the goal line)
+    const leftTroughX = arena.bounds.xLeft - arena.goalDepth / 2;
+    createAttractor(this, leftTroughX, cy, troughHeight, effectiveRadius, ballDiameter);
 
-    const leftAttractor = createAttractor(this, arena.bounds.xLeft + arena.goalDepth / 2, cy, troughWidth, troughHeight, effectiveRadius);
-    const rightAttractor = createAttractor(this, arena.bounds.xRight - arena.goalDepth / 2, cy, troughWidth, troughHeight, effectiveRadius);
+    // Calculate the center of the right trough (behind the goal line)
+    const rightTroughX = arena.bounds.xRight + arena.goalDepth / 2;
+    createAttractor(this, rightTroughX, cy, troughHeight, effectiveRadius, ballDiameter);
+
+
+    // --- Create the Center Repulsor ---
+        const repulsorRadius = this.arena.arenaWidth * 0.5; // Example: radius is 50% of the arena width
+        createRepulsor(this, this.arena.center.cx, this.arena.center.cy, repulsorRadius);
+
+
+    // --- 2. Create the Score UI Text ---
+    const scoreTextStyle = {
+        fontSize: '48px',
+        fill: '#FFFFFF',
+        fontFamily: '"Press Start 2P", Arial', // A retro game font
+        stroke: '#000000',
+        strokeThickness: 8
+    };
+
+    // Create Left Score Text (Player 1)
+    this.scoreLeftText = this.add.text(50, 30, `P1: ${this.scoreLeft}`, scoreTextStyle)
+        .setOrigin(0, 0.5) // Position from the left side
+        .setScrollFactor(0); // Fixes it to the camera
+
+    // Create Right Score Text (Player 2)
+    this.scoreRightText = this.add.text(this.scale.width - 50, 30, `P2: ${this.scoreRight}`, scoreTextStyle)
+        .setOrigin(1, 0.5) // Position from the right side
+        .setScrollFactor(0); // Fixes it to the camera
 
     // Camera fit
     if (this.arena?.bounds) {
@@ -86,6 +126,7 @@ export class PlayScene extends Phaser.Scene {
 this.leftLauncher = createLauncher(this, 'left', arena.bounds, {
   initialAngle: 0,
   ballTexture: 'ball0',
+  ballRadius: ballRadius, // Use the true, measured radius
   exitOffset: 40   // pulls spawn point 10px back into the barrel
 });
 console.log('Left launcher created:', this.leftLauncher);
@@ -94,6 +135,7 @@ console.log('Left launcher created:', this.leftLauncher);
 this.rightLauncher = createLauncher(this, 'right', arena.bounds, {
   initialAngle: Math.PI,
   ballTexture: 'ball0',
+  ballRadius: ballRadius, // Use the true, measured radius
   exitOffset: 40   // pulls spawn point 10px back into the barrel
 });
 console.log('Right launcher created:', this.rightLauncher);
@@ -102,23 +144,19 @@ console.log('Right launcher created:', this.rightLauncher);
      leftUp: 'W', leftDown: 'S',
       rightUp: 'UP', rightDown: 'DOWN'
    });
-    // hard coded test launcher for debugging
-    this.testLauncher = launcherFactory.createLauncher(this, 'test', arena.bounds, {
-    initialAngle: 0,
-    ballTexture: 'ball0',
-    exitOffset: 40
-    });
-    this.testLauncher.sprite.setPosition(400, 300); // middle of screen
-
-
+    
     // --- Input bindings ---
   // Left launcher fires on SPACE
   this.input.keyboard.on('keydown-SPACE', () => {
+    // Only allow firing when the game is in the 'playing' state
+    if (this.gameState !== 'playing') return;
     this.leftLauncher.fireBall(this);
   });
 
   // Right launcher fires on ENTER
   this.input.keyboard.on('keydown-ENTER', () => {
+    // Only allow firing when the game is in the 'playing' state
+    if (this.gameState !== 'playing') return;
     this.rightLauncher.fireBall(this);
   });
 
@@ -156,6 +194,7 @@ this.matter.world.on('collisionstart', (event) => {
       if (!this.leftOccupied) {
         this.leftOccupied = true;
         this.scoreLeft++;
+        this.scoreLeftText.setText(`P1: ${this.scoreLeft}`); // Update the text
         console.log('Left goal scored:', this.scoreLeft);
       }
     }
@@ -164,6 +203,7 @@ this.matter.world.on('collisionstart', (event) => {
       if (!this.rightOccupied) {
         this.rightOccupied = true;
         this.scoreRight++;
+        this.scoreRightText.setText(`P2: ${this.scoreRight}`); // Update the text
         console.log('Right goal scored:', this.scoreRight);
       }
     }
@@ -178,6 +218,8 @@ this.matter.world.on('collisionstart', (event) => {
       if (ball) {
         ball.attracted = true;          // flag for attractor
         ball.setTint(0xff0000);         // visual debug: red tint
+        // Increase air friction to add damping and reduce oscillation.
+        ball.setFrictionAir(0.05); // Tune this value to taste
         console.log('Ball flagged for attraction:', ball.texture.key);
       }
     }
@@ -235,7 +277,8 @@ this.matter.world.on('collisionend', (event) => {
  //  exit.x,
  //  exit.y
 // );
-
+// Prevent any updates if the game is not in the 'playing' state
+    if (this.gameState !== 'playing') return;
 
 
     //Launcher Listeners

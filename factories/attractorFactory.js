@@ -1,50 +1,52 @@
-console.log('Loading attractorFactory.js');
+// factories/attractorFactory.js (With dynamic point calculation)
+import { CATEGORY_ATTRACTOR, CATEGORY_BALL } from '/src/config/collisionCategories.js';
 
+export function createAttractor(scene, centerX, centerY, chainHeight, effectiveRadius, ballDiameter) {
 
-// src/factories/attractorFactory.js
-import {
-  CATEGORY_BALL,
-  CATEGORY_ATTRACTOR
-} from '/src/config/collisionCategories.js';
+  // --- DYNAMIC CALCULATION ---
+  // Use Math.floor to get a whole number, ensuring at least 2 points for a line.
+  const numPoints = Math.max(2, Math.floor(chainHeight / ballDiameter));
 
-export function createAttractor(scene, x, y, width, height, effectiveRadius) {
-  // A long, thin rectangle down the trough centerline
-  const attractor = scene.matter.add.rectangle(x, y, width, height, {
-    isStatic: true,
-    isSensor: true,
-    label: 'attractor',
-    collisionFilter: {
-      category: CATEGORY_ATTRACTOR,
-      mask: CATEGORY_BALL
-    }
-  });
+  const pointRadius = 10;
 
-  // Attach update logic once per world
-  if (!scene._hasAttractorUpdate) {
-    scene._hasAttractorUpdate = true;
+  for (let i = 0; i < numPoints; i++) {
+    const pointX = centerX;
+    // Distribute points evenly along the height. Using (numPoints - 1) ensures the
+    // first and last points are at the very ends of the chain.
+    const pointY = (centerY - chainHeight / 2) + (chainHeight / (numPoints - 1)) * i;
 
-    scene.matter.world.on('beforeUpdate', function () {
-      const allBodies = scene.matter.world.localWorld.bodies;
+    scene.matter.add.circle(pointX, pointY, pointRadius, {
+      label: 'attractor',
+      isStatic: false,
+      isSensor: false,
+      mass: 10000,
+      inverseInertia: 0,
+      inverseMass: 0,
+      collisionFilter: {
+        category: CATEGORY_ATTRACTOR,
+        mask: 0
+      },
+      attractors: [
+        function(bodyA, bodyB) {
+          if (bodyB.gameObject?.isBall && bodyB.gameObject?.attracted) {
+            
+            const distanceSq = Phaser.Math.Distance.Squared(
+                bodyA.position.x, bodyA.position.y,
+                bodyB.position.x, bodyB.position.y
+            );
 
-      for (const body of allBodies) {
-        if (body.label === 'ball' && body.gameObject?.attracted) {
-          const dx = attractor.position.x - body.position.x;
-          const dy = attractor.position.y - body.position.y;
-          const r2 = dx * dx + dy * dy;
-
-          // Only apply force if within effective radius
-          if (r2 < effectiveRadius * effectiveRadius) {
-            const r = Math.sqrt(r2) || 1;
-            const strength = 0.0005; // tune this
-            const fx = (dx / r) * strength;
-            const fy = (dy / r) * strength;
-
-            scene.matter.body.applyForce(body, body.position, { x: fx, y: fy });
+            if (distanceSq < effectiveRadius * effectiveRadius) {
+              const acceleration = 0.001; 
+              return {
+                x: (bodyA.position.x - bodyB.position.x) * acceleration,
+                y: (bodyA.position.y - bodyB.position.y) * acceleration
+              };
+            }
           }
         }
-      }
+      ]
     });
   }
 
-  return attractor;
+  return null;
 }

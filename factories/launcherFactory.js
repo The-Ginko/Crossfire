@@ -86,7 +86,7 @@ export function createLauncher(scene, side, arenaBounds, config, {
 
     // Create a ball sprite with a circular Matter body
     const ball = createBall(scene, exit.x, exit.y, config.ballTexture, {
-      collisionGroup: -1, // ignore attractors until scored
+      radius: config.ballRadius, // Use the radius from the launcher's config
       frictionAir: 0.01,
       bounce: 0.9
     });

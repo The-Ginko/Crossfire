@@ -1,0 +1,386 @@
+// src/scenes/PlayScene.js
+export class PlayScene extends Phaser.Scene {
+  constructor() {
+    super('PlayScene');
+    this.scoreTop = 0;
+    this.scoreBottom = 0;
+
+    // Simple occupancy flags to prevent repeat scoring while overlapping
+    this.topOccupied = false;
+    this.bottomOccupied = false;
+  }
+
+  preload() {
+    this.load.image('arena', 'assets/Arena_Graphic.png');
+    this.load.image('bearing', 'assets/Bearing.png');
+    this.load.image('starPuck', 'assets/StarPuck.png');
+    this.load.xml('starPuckRaw', 'assets/StarPuck_Raw.svg');
+    this.load.image('bearing2', 'assets/bearing2.png');
+    this.load.image('TrianglePuck', 'assets/TrianglePuck.png');
+    this.load.xml('TrianglePuck_Raw', 'assets/TrianglePuck_Raw.svg');
+
+  }
+
+  create() {
+    const cw = this.scale.width;
+    const ch = this.scale.height;
+    const cx = cw / 2;
+    const cy = ch / 2;
+
+    // IMPORTANT: Do NOT set physics bounds to canvas size; they trap the puck inside a small rectangle.
+    // this.matter.world.setBounds(0, 0, cw, ch, 10, true, true, true, true);
+
+    // Mouse spring for dragging
+    this.input.mouse?.disableContextMenu();
+    this.matter.add.mouseSpring({ length: 0, stiffness: 0.9 });
+
+    // Create composite puck
+    this.puck = this.createCompositePuck(cx, cy);
+    this.triPuck = this.createTrianglePuck(cx + 300, cy);
+
+
+    // Build arena after puck exists (so we can size it in puck units)
+    this.arena = this.createArenaFromPuckUnits(cx, cy, this.puck);
+
+    // --- CAMERA AUTO-FIT + FOLLOW ---
+    if (this.arena?.bounds) {
+      const { xLeft, xRight, yTop, yBot } = this.arena.bounds;
+      const arenaWidth  = xRight - xLeft;
+      const arenaHeight = yBot - yTop;
+
+      // Camera bounds to arena extents (visual, not physics)
+      this.cameras.main.setBounds(xLeft, yTop, arenaWidth, arenaHeight);
+
+      // Center and zoom to fit
+      this.cameras.main.centerOn((xLeft + xRight) / 2, (yTop + yBot) / 2);
+      const zoomX = this.scale.width  / arenaWidth;
+      const zoomY = this.scale.height / arenaHeight;
+      const zoom  = Math.min(zoomX, zoomY);
+      this.cameras.main.setZoom(zoom);
+
+      // Follow puck so it stays in view during motion
+      this.cameras.main.startFollow(this.puck.star, true, 0.15, 0.15);
+
+      // Runtime log for verification
+      console.log(`Puck span px: ${this.puck.star.displayWidth}`);
+      console.log(`Arena size px: ${Math.round(arenaWidth)} x ${Math.round(arenaHeight)} (zoom ${zoom.toFixed(3)})`);
+    }
+
+    // Respawn key (R): destroy and recreate puck, keep camera following it, clear occupancy flags
+    this.input.keyboard.on('keydown-R', () => {
+      this.destroyCompositePuck(this.puck);
+      this.destroyTrianglePuck(this.triPuck);
+      this.puck = this.createCompositePuck(cx, cy);
+          // Spawn a TrianglePuck offset to the right so it doesn't overlap the star puck
+      this.triPuck = this.createTrianglePuck(cx + 300, cy);
+
+      this.cameras.main.startFollow(this.puck.star, true, 0.15, 0.15);
+      this.topOccupied = false;
+      this.bottomOccupied = false;
+      console.log('Puck respawned at center.');
+    });
+
+    // --- DEBUG OVERLAY ---
+    this.debugDraw = (() => {
+      const g = this.add.graphics();
+      const cross = (x, y, color) => {
+        g.lineStyle(1, color, 1);
+        g.strokeLineShape(new Phaser.Geom.Line(x - 6, y, x + 6, y));
+        g.strokeLineShape(new Phaser.Geom.Line(x, y - 6, x, y + 6));
+      };
+      return {
+        draw: (star, bearing) => {
+          g.clear();
+          // sprite visual centers
+          cross(star.x, star.y, 0xff00ff);       // magenta
+          cross(bearing.x, bearing.y, 0x00ffff); // cyan
+          // physics COM dots
+          g.fillStyle(0xffaa00, 1);
+          g.fillCircle(star.body.position.x, star.body.position.y, 2);    // amber
+          g.fillStyle(0x00aa00, 1);
+          g.fillCircle(bearing.body.position.x, bearing.body.position.y, 2); // green
+
+          // arena bounds outline
+          if (this.arena?.bounds) {
+            g.lineStyle(2, 0x00ff00, 0.8);
+            const { xLeft, xRight, yTop, yBot } = this.arena.bounds;
+            g.strokeRect(xLeft, yTop, xRight - xLeft, yBot - yTop);
+          }
+
+          // visualize goal sensors (red boxes)
+          const local = this.matter.world.localWorld;
+          if (local?.bodies) {
+            g.lineStyle(2, 0xff0000, 0.7);
+            for (const b of local.bodies) {
+              if (b.label === 'goal_top' || b.label === 'goal_bottom') {
+                const { min, max } = b.bounds;
+                g.strokeRect(min.x, min.y, max.x - min.x, max.y - min.y);
+              }
+            }
+          }
+        }
+      };
+    })();
+
+    // --- COLLISION LISTENERS (use gameObject texture keys + sensor labels) ---
+    this.matter.world.on('collisionstart', (event) => {
+      event.pairs.forEach(({ bodyA, bodyB }) => {
+        const goA = bodyA.gameObject;
+        const goB = bodyB.gameObject;
+        const aIsStar = goA?.texture?.key === 'starPuck';
+        const bIsStar = goB?.texture?.key === 'starPuck';
+        const aIsTopSensor = bodyA.label === 'goal_top';
+        const bIsTopSensor = bodyB.label === 'goal_top';
+        const aIsBottomSensor = bodyA.label === 'goal_bottom';
+        const bIsBottomSensor = bodyB.label === 'goal_bottom';
+
+        // Top goal entry (debounced by occupancy)
+        if ((aIsStar && bIsTopSensor) || (bIsStar && aIsTopSensor)) {
+          if (!this.topOccupied) {
+            this.topOccupied = true;
+            this.scoreTop++;
+            console.log('Top goal scored:', this.scoreTop);
+          }
+        }
+
+        // Bottom goal entry (debounced by occupancy)
+        if ((aIsStar && bIsBottomSensor) || (bIsStar && aIsBottomSensor)) {
+          if (!this.bottomOccupied) {
+            this.bottomOccupied = true;
+            this.scoreBottom++;
+            console.log('Bottom goal scored:', this.scoreBottom);
+          }
+        }
+      });
+    });
+
+    this.matter.world.on('collisionend', (event) => {
+      event.pairs.forEach(({ bodyA, bodyB }) => {
+        const goA = bodyA.gameObject;
+        const goB = bodyB.gameObject;
+        const aIsStar = goA?.texture?.key === 'starPuck';
+        const bIsStar = goB?.texture?.key === 'starPuck';
+        const aIsTopSensor = bodyA.label === 'goal_top';
+        const bIsTopSensor = bodyB.label === 'goal_top';
+        const aIsBottomSensor = bodyA.label === 'goal_bottom';
+        const bIsBottomSensor = bodyB.label === 'goal_bottom';
+
+        // Clear occupancy when star exits sensors
+        if ((aIsStar && bIsTopSensor) || (bIsStar && aIsTopSensor)) {
+          this.topOccupied = false;
+        }
+        if ((aIsStar && bIsBottomSensor) || (bIsStar && aIsBottomSensor)) {
+          this.bottomOccupied = false;
+        }
+      });
+    });
+  }
+
+  createCompositePuck(x, y) {
+    const MatterRef = Phaser.Physics.Matter.Matter;
+
+    // --- STAR BODY (from SVG) ---
+    const svg = this.cache.xml.get('starPuckRaw');
+    const pathEl = svg?.querySelector('path');
+    let starBody;
+
+    if (pathEl && MatterRef.Svg?.pathToVertices) {
+      const verts = MatterRef.Svg.pathToVertices(pathEl, 10);
+      starBody = MatterRef.Bodies.fromVertices(
+        x, y, verts,
+        { restitution: 0.6, friction: 0.2, frictionAir: 0.01 },
+        true
+      );
+    } else {
+      // Fallback: circle
+      starBody = MatterRef.Bodies.circle(
+        x, y, 60,
+        { restitution: 0.6, friction: 0.2, frictionAir: 0.01 }
+      );
+    }
+
+    const star = this.add.image(x, y, 'starPuck').setOrigin(0.5, 0.5);
+    this.matter.add.gameObject(star, starBody);
+    // Label after wrapping to ensure presence in collision callbacks
+    star.body.label = 'puck_star';
+
+    // --- BEARING BODY (circle) ---
+    const bearingRadius   = 64;   // matches your resized 128x128
+    const bearingDiameter = 128;
+
+    const bearing = this.matter.add.image(x, y, 'bearing').setOrigin(0.5, 0.5);
+    bearing.setCircle(bearingRadius);
+    bearing.setDisplaySize(bearingDiameter, bearingDiameter);
+    bearing.setBounce(0.2);
+    bearing.setFriction(0.01);
+    bearing.setFrictionAir(0.02);
+    bearing.body.label = 'puck_bearing';
+
+    // --- NEGATIVE COLLISION GROUP (so star & bearing don't collide with each other) ---
+    const group = this.matter.world.nextGroup(true);
+    star.setCollisionGroup(group);
+    bearing.setCollisionGroup(group);
+
+    // --- CONSTRAINT (direct COM-to-COM pivot) ---
+    const constraint = this.matter.add.constraint(
+      star.body,
+      bearing.body,
+      0,
+      1.0
+    );
+
+    return { star, bearing, constraint };
+  }
+
+    // --------------------------
+  // Second puck: TrianglePuck
+  // --------------------------
+  createTrianglePuck(x, y) {
+    const MatterRef = Phaser.Physics.Matter.Matter;
+
+    // --- TRIANGLE BODY (from SVG) ---
+    const svg = this.cache.xml.get('TrianglePuck_Raw');
+    const pathEl = svg?.querySelector('path');
+    let triBody;
+
+    if (pathEl && MatterRef.Svg?.pathToVertices) {
+      const verts = MatterRef.Svg.pathToVertices(pathEl, 10);
+      triBody = MatterRef.Bodies.fromVertices(
+        x, y, verts,
+        { restitution: 0.6, friction: 0.2, frictionAir: 0.01 },
+        true
+      );
+    } else {
+      // Fallback: circle approximation
+      triBody = MatterRef.Bodies.circle(
+        x, y, 60,
+        { restitution: 0.6, friction: 0.2, frictionAir: 0.01 }
+      );
+    }
+
+    const tri = this.add.image(x, y, 'TrianglePuck').setOrigin(0.5, 0.5);
+    this.matter.add.gameObject(tri, triBody);
+    tri.body.label = 'puck_triangle';
+
+    // --- BEARING2 BODY (circle) ---
+    const bearingRadius   = 64;   // matches 128x128 bearing2.png
+    const bearingDiameter = 128;
+
+    const bearing2 = this.matter.add.image(x, y, 'bearing2').setOrigin(0.5, 0.5);
+    bearing2.setCircle(bearingRadius);
+    bearing2.setDisplaySize(bearingDiameter, bearingDiameter);
+    bearing2.setBounce(0.2);
+    bearing2.setFriction(0.01);
+    bearing2.setFrictionAir(0.02);
+    bearing2.body.label = 'puck_bearing2';
+
+    // --- NEGATIVE COLLISION GROUP ---
+    const group = this.matter.world.nextGroup(true);
+    tri.setCollisionGroup(group);
+    bearing2.setCollisionGroup(group);
+
+    // --- CONSTRAINT (pivot) ---
+    const constraint = this.matter.add.constraint(
+      tri.body,
+      bearing2.body,
+      0,
+      1.0
+    );
+
+    return { tri, bearing2, constraint };
+  }
+
+  destroyCompositePuck(puck) {
+    if (!puck) return;
+    try {
+      this.matter.world.removeConstraint(puck.constraint);
+    } catch {}
+    puck.star.destroy();
+    puck.bearing.destroy();
+  }
+
+  destroyTrianglePuck(puck) {
+  if (!puck) return;
+  try {
+    this.matter.world.removeConstraint(puck.constraint);
+  } catch {}
+  puck.tri.destroy();
+  puck.bearing2.destroy();
+}
+
+
+  update(time, delta) {
+    if (this.debugDraw && this.puck) {
+      this.debugDraw.draw(this.puck.star, this.puck.bearing);
+    }
+  }
+
+  // --------------------------
+  // Arena builder (puck units)
+  // --------------------------
+  createArenaFromPuckUnits(originX, originY, puckComposite) {
+    // Derive puck "span" in pixels from the star sprite
+    const puckSpanPx = puckComposite.star.displayWidth;
+
+    // Authentic proportions (excluding goal catch depth)
+    const arenaWidth  = puckSpanPx * 7.6;
+    const arenaHeight = puckSpanPx * 12.2;
+
+    // Wall thickness and goal depth (tunable)
+    const wallT     = puckSpanPx * 0.40;                  // ~20 mm equivalent
+    const goalDepth = puckSpanPx * 1.00;                  // ~1 puck span
+    const sensorH   = Math.max(6, puckSpanPx * 0.15);     // thin mouth sensor
+
+    // Bounds centered at origin
+    const xLeft  = originX - arenaWidth / 2;
+    const xRight = originX + arenaWidth / 2;
+    const yTop   = originY - arenaHeight / 2;
+    const yBot   = originY + arenaHeight / 2;
+
+    // Build side walls (3 segments per side for predictable collisions)
+    const segments = 3;
+    const segH = (yBot - yTop) / segments;
+    for (let i = 0; i < segments; i++) {
+      const cy = yTop + segH * (i + 0.5);
+      this.matter.add.rectangle(xLeft,  cy, wallT, segH, { isStatic: true, label: 'arena_wall' });
+      this.matter.add.rectangle(xRight, cy, wallT, segH, { isStatic: true, label: 'arena_wall' });
+    }
+
+    const cx = (xLeft + xRight) / 2;
+    const goalWidth = xRight - xLeft;
+
+    // Top goal walls + sensor
+    {
+      const midY  = yTop - goalDepth / 2;
+      const backY = yTop - goalDepth;
+
+      this.matter.add.rectangle(xLeft,  midY, wallT, goalDepth, { isStatic: true, label: 'goal_top_wall' });
+      this.matter.add.rectangle(xRight, midY, wallT, goalDepth, { isStatic: true, label: 'goal_top_wall' });
+      this.matter.add.rectangle(cx,     backY, goalWidth, wallT, { isStatic: true, label: 'goal_top_wall' });
+
+      const sensorTop = this.matter.add.rectangle(cx, yTop, goalWidth, sensorH, {
+        isStatic: true,
+        isSensor: true
+      });
+      sensorTop.label = 'goal_top';
+    }
+
+    // Bottom goal walls + sensor
+    {
+      const midY  = yBot + goalDepth / 2;
+      const backY = yBot + goalDepth;
+
+      this.matter.add.rectangle(xLeft,  midY, wallT, goalDepth, { isStatic: true, label: 'goal_bottom_wall' });
+      this.matter.add.rectangle(xRight, midY, wallT, goalDepth, { isStatic: true, label: 'goal_bottom_wall' });
+      this.matter.add.rectangle(cx,     backY, goalWidth, wallT, { isStatic: true, label: 'goal_bottom_wall' });
+
+      const sensorBottom = this.matter.add.rectangle(cx, yBot, goalWidth, sensorH, {
+        isStatic: true,
+        isSensor: true
+      });
+      sensorBottom.label = 'goal_bottom';
+    }
+
+    return { bounds: { xLeft, xRight, yTop, yBot } };
+  }
+}

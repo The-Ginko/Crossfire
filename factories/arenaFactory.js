@@ -21,7 +21,7 @@ export function createArena(scene, originX, originY, puckComposite) {
   const goalDepth   = puckSpanPx * 1.00;
   const sensorW     = Math.max(6, puckSpanPx * 0.15);
   const throatInset = arenaHeight * 0.20;
-  const cx = originX + arenaWidth / 2;
+  const cx = originX;
  
 
   // --- Wedge parameters ---
@@ -233,17 +233,6 @@ export function createArena(scene, originX, originY, puckComposite) {
   buildGoal('right');
 
   return {
-    bounds: {
-      xLeft,
-      xRight,
-      yTop,
-      yBot,
-      wallT,
-      xOuterLeft: xLeft - wallT,
-      xOuterRight: xRight + wallT,
-      yOuterTop: yTop - wallT,
-      yOuterBot: yBot + wallT
-    },
   arenaWidth,
   arenaHeight,
   throatInset,
@@ -253,6 +242,7 @@ export function createArena(scene, originX, originY, puckComposite) {
     xRight,
     yTop,
     yBot,
+    wallT,
     xOuterLeft: xLeft - wallT,
     xOuterRight: xRight + wallT,
     yOuterTop: yTop - wallT,
