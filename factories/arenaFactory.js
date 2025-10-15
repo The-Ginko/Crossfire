@@ -243,8 +243,8 @@ export function createArena(scene, originX, originY, puckComposite) {
     yTop,
     yBot,
     wallT,
-    xOuterLeft: xLeft - wallT,
-    xOuterRight: xRight + wallT,
+    xOuterLeft: xLeft - goalDepth,
+    xOuterRight: xRight + goalDepth,
     yOuterTop: yTop - wallT,
     yOuterBot: yBot + wallT
   },

@@ -28,15 +28,21 @@ export function createAttractor(scene, centerX, centerY, chainHeight, effectiveR
       },
       attractors: [
         function(bodyA, bodyB) {
-          if (bodyB.gameObject?.isBall && bodyB.gameObject?.attracted) {
-            
+          // Check if the body's gameObject exists, is flagged as 'attracted',
+          // and is either a ball or one of the pucks.
+          const isAttractable = bodyB.gameObject?.attracted &&
+                                (bodyB.gameObject.isBall ||
+                                 bodyB.gameObject.texture?.key === 'starPuck' ||
+                                 bodyB.gameObject.texture?.key === 'TrianglePuck');
+
+          if (isAttractable) {
             const distanceSq = Phaser.Math.Distance.Squared(
                 bodyA.position.x, bodyA.position.y,
                 bodyB.position.x, bodyB.position.y
             );
 
             if (distanceSq < effectiveRadius * effectiveRadius) {
-              const acceleration = 0.001; 
+              const acceleration = 0.001;
               return {
                 x: (bodyA.position.x - bodyB.position.x) * acceleration,
                 y: (bodyA.position.y - bodyB.position.y) * acceleration
