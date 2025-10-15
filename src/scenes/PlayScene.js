@@ -53,13 +53,12 @@ export class PlayScene extends Phaser.Scene {
   }
 
   create() {
-
     // --- Scene Cleanup ---
-    // Destroy any persistent UI elements from a previous game session
-    if (this.gameOverUI) {
-      this.gameOverUI.destroy(true);
-      this.gameOverUI = null;
-    }
+    // This is no longer needed here, as it's handled before the scene restarts.
+    // if (this.gameOverUI) {
+    //   this.gameOverUI.destroy(true);
+    //   this.gameOverUI = null;
+    // }
     if (this.countdownText) {
       this.countdownText.destroy();
       this.countdownText = null;
@@ -252,15 +251,14 @@ console.log('Right launcher created:', this.rightLauncher);
       const cy = this.scale.height / 2;
       
       if (this.gameState === 'gameOver') {
+        // *** THIS IS THE FIX ***
+        // Destroy the Game Over UI *before* restarting the scene.
+        if (this.gameOverUI) {
+          this.gameOverUI.destroy(true);
+          this.gameOverUI = null;
+        }
         
-        // Force all state variables back to their default values BEFORE restarting.
-        this.scoreLeft = 0;
-        this.scoreRight = 0;
-        this.launcherLeftAmmo = 20;
-        this.launcherRightAmmo = 20;
-        //this.gameMode = 'Classic'; // Or whatever default you prefer
-        this.gameState = 'countdown';
-        this.scoredPucks = 0;
+        // The init() method will handle resetting the state variables.
         this.scene.restart();
 
       } else if (this.gameState === 'playing') {
@@ -270,7 +268,7 @@ console.log('Right launcher created:', this.rightLauncher);
         this.puck = createStarPuck(this, cx, cy);
         this.triPuck = createTrianglePuck(this, cx + 300, cy);
         this.cameras.main.startFollow(this.puck.star, true, 0.15, 0.15);
-      } // <-- This closing brace was missing
+      }
     });
     //debug graphics
       this.debugGraphics = this.add.graphics();
