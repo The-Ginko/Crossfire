@@ -375,7 +375,13 @@ console.log('Right launcher created:', this.rightLauncher);
     let count = 3;
     this.countdownText.setText(count.toString()).setVisible(true);
 
-    const countdownTimer = this.time.addEvent({
+    // If a timer already exists, remove it before creating a new one.
+  if (this.countdownTimer) {
+    this.countdownTimer.remove();
+  }
+
+  // Assign the new timer event to a property on the scene
+  this.countdownTimer = this.time.addEvent({
       delay: this.countdownInterval,
       callback: () => {
         count--;
@@ -387,7 +393,13 @@ console.log('Right launcher created:', this.rightLauncher);
           // Countdown is finished
           this.countdownText.setVisible(false);
           this.gameState = 'playing';
-          countdownTimer.remove(); // Stop the timer
+
+          // --- THIS IS THE FIX ---
+          // Use 'this.countdownTimer' to refer to the scene's timer property.
+          if (this.countdownTimer) {
+            this.countdownTimer.remove(); 
+            this.countdownTimer = null; // Clear the reference
+          }
         }
       },
       callbackScope: this,
@@ -463,6 +475,11 @@ console.log('Right launcher created:', this.rightLauncher);
   }
 
   handleGameOver(winner) {
+    // Stop any active countdown timer to prevent state conflicts
+  if (this.countdownTimer) {
+    this.countdownTimer.remove();
+    this.countdownTimer = null;
+  }
     this.gameState = 'gameOver';
     this.cameras.main.stopFollow();
 
