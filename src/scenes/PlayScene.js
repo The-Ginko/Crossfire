@@ -138,19 +138,29 @@ export class PlayScene extends Phaser.Scene {
     
     // Camera fit
     if (this.arena?.bounds) {
-      const { xLeft, xRight, yTop, yBot } = this.arena.bounds;
-      const arenaWidth  = xRight - xLeft;
-      const arenaHeight = yBot - yTop;
+      // Destructure the outer bounds properties directly from the nested bounds object.
+      const { xOuterLeft, xOuterRight, yTop, yBot } = this.arena.bounds;
 
-      this.cameras.main.setBounds(xLeft, yTop, arenaWidth, arenaHeight);
-      this.cameras.main.centerOn((xLeft + xRight) / 2, (yTop + yBot) / 2);
-      const zoomX = this.scale.width  / arenaWidth;
-      const zoomY = this.scale.height / arenaHeight;
+      // Calculate the full width and height required to show everything.
+      const fullWidth = xOuterRight - xOuterLeft;
+      const fullHeight = yBot - yTop; // The height doesn't change.
+
+      // Set the camera bounds using these new, correct dimensions.
+      this.cameras.main.setBounds(xOuterLeft, yTop, fullWidth, fullHeight);
+
+      // Center the camera on the middle of the entire play area.
+      this.cameras.main.centerOn(this.arena.center.cx, this.arena.center.cy);
+
+      // Calculate the correct zoom to make everything fit perfectly.
+      const zoomX = this.scale.width  / fullWidth;
+      const zoomY = this.scale.height / fullHeight;
       const zoom  = Math.min(zoomX, zoomY);
       this.cameras.main.setZoom(zoom);
 
+      // Continue following the puck as before.
       this.cameras.main.startFollow(this.puck.star, true, 0.15, 0.15);
     }
+
 
     // Launcher Creation
     // Left launcher, pointing right (angle 0)
