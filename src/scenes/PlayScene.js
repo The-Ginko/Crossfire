@@ -8,21 +8,29 @@ import { createRepulsor } from '/factories/repulsorFactory.js';
 export class PlayScene extends Phaser.Scene {
   constructor() {
     super('PlayScene');
-    this.scoreLeft = 0;
-    this.scoreRight = 0;
-    this.gameState = 'playing'; // The game starts in a 'playing' state.
+        this.gameState = 'playing'; // The game starts in a 'playing' state.
     this.scoreLeftText = null;
     this.scoreRightText = null;
     // --- Ball Inventory & Ammunition ---
     this.totalBallCount = 40;
+    // --- Timing & Tweakables ---
+    this.countdownInterval = 1000; // ms between countdown numbers
+    this.blitzPuckReturnDelay = 500; // ms for puck to return in Blitz mode
+    this.winScore = 3; // Score needed to win
+    this.gameOverUI = null; // Group for game over screen elements
+    this.countdownText = null;
+  }
+
+  init() {
+    // This method is called every time the scene starts or restarts.
+    // All game state variables should be reset here.
+    this.scoreLeft = 0;
+    this.scoreRight = 0;
     this.launcherLeftAmmo = 20;
     this.launcherRightAmmo = 20;
     this.gameMode = 'Classic'; // Can be 'Classic', 'Blitz', or 'Debug'
     this.gameState = 'countdown'; // Can be 'countdown', 'playing', 'paused', 'gameOver'
     this.scoredPucks = 0;
-    // --- Timing & Tweakables ---
-    this.countdownInterval = 1000; // ms between countdown numbers
-    this.blitzPuckReturnDelay = 500; // ms for puck to return in Blitz mode
   }
 
   preload() {
@@ -45,6 +53,18 @@ export class PlayScene extends Phaser.Scene {
   }
 
   create() {
+
+    // --- Scene Cleanup ---
+    // Destroy any persistent UI elements from a previous game session
+    if (this.gameOverUI) {
+      this.gameOverUI.destroy(true);
+      this.gameOverUI = null;
+    }
+    if (this.countdownText) {
+      this.countdownText.destroy();
+      this.countdownText = null;
+    }
+
     const cw = this.scale.width;
     const ch = this.scale.height;
     const cx = cw / 2;
@@ -228,15 +248,29 @@ console.log('Right launcher created:', this.rightLauncher);
     
     // Respawn key (R)
     this.input.keyboard.on('keydown-R', () => {
-      this.destroyPuck(this.puck, 'star');
-      this.destroyPuck(this.triPuck, 'triangle');
+      const cx = this.scale.width / 2;
+      const cy = this.scale.height / 2;
+      
+      if (this.gameState === 'gameOver') {
+        
+        // Force all state variables back to their default values BEFORE restarting.
+        this.scoreLeft = 0;
+        this.scoreRight = 0;
+        this.launcherLeftAmmo = 20;
+        this.launcherRightAmmo = 20;
+        //this.gameMode = 'Classic'; // Or whatever default you prefer
+        this.gameState = 'countdown';
+        this.scoredPucks = 0;
+        this.scene.restart();
 
-      this.puck = createStarPuck(this, cx, cy);
-      this.triPuck = createTrianglePuck(this, cx + 300, cy);
-
-      this.cameras.main.startFollow(this.puck.star, true, 0.15, 0.15);
-      this.leftOccupied = false;
-      this.rightOccupied = false;
+      } else if (this.gameState === 'playing') {
+        // If playing, just respawn the pucks for testing
+        this.destroyPuck(this.puck, 'star');
+        this.destroyPuck(this.triPuck, 'triangle');
+        this.puck = createStarPuck(this, cx, cy);
+        this.triPuck = createTrianglePuck(this, cx + 300, cy);
+        this.cameras.main.startFollow(this.puck.star, true, 0.15, 0.15);
+      } // <-- This closing brace was missing
     });
     //debug graphics
       this.debugGraphics = this.add.graphics();
@@ -270,9 +304,21 @@ console.log('Right launcher created:', this.rightLauncher);
             this.scoreRightText.setText(`P2: ${this.scoreRight}`);
           }
 
-          // Call the new central handler
-          this.handlePuckScored(puck);
-        } 
+          // --- Win Condition Check ---
+          if (this.gameMode !== 'Debug') {
+            if (this.scoreLeft >= this.winScore) {
+              this.handleGameOver('P1');
+            } else if (this.scoreRight >= this.winScore) {
+              this.handleGameOver('P2');
+            } else {
+              // Only handle puck respawn if the game isn't over
+              this.handlePuckScored(puck);
+            }
+          } else {
+             // In debug mode, just handle the puck respawn without checking for a winner
+            this.handlePuckScored(puck);
+          }
+        }
 
         // --- Ball Attraction Logic ---
         if (ball && !ball.attracted) {
@@ -418,5 +464,41 @@ console.log('Right launcher created:', this.rightLauncher);
     if (this.keys.rightDown.isDown)this.rightLauncher.setAngle(this.rightLauncher.getAngle() + step);
   }
 
-  
+  handleGameOver(winner) {
+    this.gameState = 'gameOver';
+    this.cameras.main.stopFollow();
+
+    // Create a group to hold all game over UI elements
+    this.gameOverUI = this.add.group();
+
+    const winText = `${winner} Wins!`;
+    const restartText = 'Press R to Restart';
+
+    // Create a semi-transparent background
+    const bg = this.add.graphics({ fillStyle: { color: 0x000000, alpha: 0.7 } });
+    bg.fillRect(0, 0, this.scale.width, this.scale.height);
+    bg.setScrollFactor(0);
+    bg.setDepth(150);
+
+    // Display "Player X Wins!" text
+    const winTextObject = this.add.text(this.cameras.main.centerX, this.cameras.main.centerY - 50, winText, {
+      fontSize: '84px',
+      fill: '#FFD700',
+      fontFamily: '"Press Start 2P", Arial',
+      stroke: '#000',
+      strokeThickness: 8
+    }).setOrigin(0.5).setScrollFactor(0).setDepth(200);
+
+    // Display "Press R to Restart" text
+    const restartTextObject = this.add.text(this.cameras.main.centerX, this.cameras.main.centerY + 50, restartText, {
+      fontSize: '32px',
+      fill: '#FFFFFF',
+    }).setOrigin(0.5).setScrollFactor(0).setDepth(200);
+      
+    // Add all UI elements to the group for easy cleanup
+    this.gameOverUI.add(bg);
+    this.gameOverUI.add(winTextObject);
+    this.gameOverUI.add(restartTextObject);
+  }
+
 }
