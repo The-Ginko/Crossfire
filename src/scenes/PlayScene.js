@@ -136,30 +136,49 @@ export class PlayScene extends Phaser.Scene {
     this.ammoLeftText = this.add.text(16, 50, `Ammo: ${this.launcherLeftAmmo}`, { fontSize: '24px', fill: '#FFF' });
     this.ammoRightText = this.add.text(this.cameras.main.width - 200, 50, `Ammo: ${this.launcherRightAmmo}`, { fontSize: '24px', fill: '#FFF' });
     
-    // Camera fit
-    if (this.arena?.bounds) {
-      // Destructure the outer bounds properties directly from the nested bounds object.
-      const { xOuterLeft, xOuterRight, yTop, yBot } = this.arena.bounds;
+    // --- CAMERA AUTO-FIT + STATIC POSITIONING ---
+if (this.arena?.bounds) {
+    // Destructure the arena's outer boundaries for clarity.
+    const { xOuterLeft, xOuterRight, yTop, yBot } = this.arena.bounds;
 
-      // Calculate the full width and height required to show everything.
-      const fullWidth = xOuterRight - xOuterLeft;
-      const fullHeight = yBot - yTop; // The height doesn't change.
+    // --- 1. Define Layout Constraints ---
+    const topMarginPercentage = 0.20;
+    const viewportHeight = this.scale.height;
+    const viewportWidth = this.scale.width;
+    const topMarginInPixels = viewportHeight * topMarginPercentage;
 
-      // Set the camera bounds using these new, correct dimensions.
-      this.cameras.main.setBounds(xOuterLeft, yTop, fullWidth, fullHeight);
+    // --- 2. Calculate Arena Dimensions & Available Space ---
+    const availableHeight = viewportHeight - topMarginInPixels;
+    const fullWidth = xOuterRight - xOuterLeft;
+    const fullHeight = yBot - yTop;
 
-      // Center the camera on the middle of the entire play area.
-      this.cameras.main.centerOn(this.arena.center.cx, this.arena.center.cy);
+    // --- 3. Calculate and Apply Zoom ---
+    // Determine the correct zoom level to fit the arena within the available space
+    // below the top margin, while maintaining the aspect ratio.
+    const zoomX = viewportWidth / fullWidth;
+    const zoomY = availableHeight / fullHeight;
+    const zoom = Math.min(zoomX, zoomY);
+    this.cameras.main.setZoom(zoom);
 
-      // Calculate the correct zoom to make everything fit perfectly.
-      const zoomX = this.scale.width  / fullWidth;
-      const zoomY = this.scale.height / fullHeight;
-      const zoom  = Math.min(zoomX, zoomY);
-      this.cameras.main.setZoom(zoom);
+    // --- 4. Calculate New Center Point for Anchoring ---
+    // To anchor the arena to the bottom with a top margin, we need to shift
+    // the camera's center point upwards. This will push the rendered arena down.
 
-      // Continue following the puck as before.
-      this.cameras.main.startFollow(this.puck.star, true, 0.15, 0.15);
-    }
+    // The horizontal center is simply the center of the arena.
+    const centerX = this.arena.center.cx;
+
+    // The vertical center needs to be offset. We start with the arena's true center
+    // and shift it UP by half the size of the top margin (in world units).
+    const verticalOffset = (topMarginInPixels / 2) / zoom;
+    const centerY = this.arena.center.cy - verticalOffset; // <-- THE FIX IS HERE (was +)
+
+    // --- 5. Apply Centering ---
+    // centerOn() will correctly position the camera based on our calculated
+    // center point and the current zoom level.
+    this.cameras.main.centerOn(centerX, centerY);
+
+    // Camera is now static and correctly positioned. No follow or bounds needed.
+}
 
 
     // Launcher Creation
