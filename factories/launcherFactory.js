@@ -8,7 +8,7 @@ import { createBall } from '/factories/ballFactory.js'; // adjust path if needed
 export function createLauncher(scene, side, arenaBounds, config, {
   pivotOffset = 40,             // distance from wall pivot to launcher body
   barrelLength = 80,            // distance from pivot to barrel tip
-  launchForceMagnitude = 0.02,  // force applied to launched balls
+  launchForceMagnitude = .62,  // force applied to launched balls
   ballTexture = 'ball0',        // texture key for ball sprite
   exitOffset = 0                // inset adjustment
 } = {}) {

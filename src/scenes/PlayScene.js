@@ -290,14 +290,14 @@ console.log('Right launcher created:', this.rightLauncher);
         // The init() method will handle resetting the state variables.
         this.scene.restart();
 
-      } else if (this.gameState === 'playing') {
+      } else if (this.gameState == 'playing') {
         // If playing, just respawn the pucks for testing
         this.destroyPuck(this.puck, 'star');
         this.destroyPuck(this.triPuck, 'triangle');
         this.puck = createStarPuck(this, cx, cy);
         this.triPuck = createTrianglePuck(this, cx + 300, cy);
-        this.cameras.main.startFollow(this.puck.star, true, 0.15, 0.15);
-      }
+        
+      }//this.cameras.main.startFollow(this.puck.star, true, 0.15, 0.15);
     });
     //debug graphics
       this.debugGraphics = this.add.graphics();
@@ -448,7 +448,7 @@ console.log('Right launcher created:', this.rightLauncher);
         if (isStarPuck) {
           this.destroyPuck(this.puck, 'star'); // CORRECT: Uses this.puck
           this.puck = createStarPuck(this, cx, cy); // CORRECT: Assigns to this.puck
-          this.cameras.main.startFollow(this.puck.star, true, 0.15, 0.15);
+          //this.cameras.main.startFollow(this.puck.star, true, 0.15, 0.15);
         } else {
           this.destroyPuck(this.triPuck, 'triangle'); // CORRECT: Uses this.triPuck
           this.triPuck = createTrianglePuck(this, cx + 300, cy); // CORRECT: Assigns to this.triPuck
@@ -467,7 +467,7 @@ console.log('Right launcher created:', this.rightLauncher);
           this.puck = createStarPuck(this, cx, cy);
           this.triPuck = createTrianglePuck(this, cx + 300, cy);
 
-          this.cameras.main.startFollow(this.puck.star, true, 0.15, 0.15);
+          //this.cameras.main.startFollow(this.puck.star, true, 0.15, 0.15);
           this.scoredPucks = 0;
           this.startRoundCountdown();
         });
@@ -510,7 +510,7 @@ console.log('Right launcher created:', this.rightLauncher);
     this.countdownTimer = null;
   }
     this.gameState = 'gameOver';
-    this.cameras.main.stopFollow();
+    //this.cameras.main.stopFollow();
 
     // Create a group to hold all game over UI elements
     this.gameOverUI = this.add.group();
