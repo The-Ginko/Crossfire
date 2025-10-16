@@ -1,3 +1,4 @@
+import { MainMenuScene } from './scenes/MainMenuScene.js'; // Import the new scene
 import { PlayScene } from './scenes/PlayScene.js';
 
 const config = {
@@ -7,7 +8,7 @@ const config = {
   width: 1280,
   height: 720,
   backgroundColor: '#000000',
-  scene: [PlayScene],
+  scene: [MainMenuScene, PlayScene], // Add MainMenuScene before PlayScene
   scale: {
     mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH
@@ -15,9 +16,6 @@ const config = {
   physics: {
     default: 'matter',
     matter: {
-      //plugins: {
-      //  attractors: true
-     // },
       gravity: { y: 0 },
       debug: {
         showBody: true,

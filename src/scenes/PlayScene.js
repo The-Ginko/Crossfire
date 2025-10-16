@@ -21,17 +21,26 @@ export class PlayScene extends Phaser.Scene {
     this.countdownText = null;
   }
 
-  init() {
-    // This method is called every time the scene starts or restarts.
-    // All game state variables should be reset here.
+  init(data) {
+    // THE FIX: Default to an empty object if no data is passed
+    const settings = data || {};
+
+    // Now, use the 'settings' object, which is guaranteed to exist
+    this.gameMode = settings.gameMode || 'Classic';
+    this.playerCount = settings.playerCount !== undefined ? settings.playerCount : 2;
+
+    // Reset all other game state variables
     this.scoreLeft = 0;
     this.scoreRight = 0;
     this.launcherLeftAmmo = 20;
     this.launcherRightAmmo = 20;
-    this.gameMode = 'Classic'; // Can be 'Classic', 'Blitz', or 'Debug'
-    this.gameState = 'countdown'; // Can be 'countdown', 'playing', 'paused', 'gameOver'
+    this.gameState = 'countdown';
     this.scoredPucks = 0;
+
+    // Log the settings for verification
+    console.log(`Starting Game: Mode=${this.gameMode}, Players=${this.playerCount}`);
   }
+    
 
   preload() {
     // Arena
@@ -53,6 +62,12 @@ export class PlayScene extends Phaser.Scene {
   }
 
   create() {
+    this.add.text(this.scale.width / 2, 30, `Mode: ${this.gameMode} | Players: ${this.playerCount}`, {
+        fontSize: '24px',
+        fill: '#FFF',
+        fontFamily: '"Press Start 2P", Arial'
+    }).setOrigin(0.5);
+    
     // --- Scene Cleanup ---
     // This is no longer needed here, as it's handled before the scene restarts.
     // if (this.gameOverUI) {
