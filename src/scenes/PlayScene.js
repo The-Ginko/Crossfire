@@ -29,6 +29,8 @@ export class PlayScene extends Phaser.Scene {
     // Now, use the 'settings' object, which is guaranteed to exist
     this.gameMode = settings.gameMode || 'Classic';
     this.playerCount = settings.playerCount !== undefined ? settings.playerCount : 2;
+    this.humanPlayerSide = settings.humanPlayerSide || 'left'; // <-- THIS IS THE FIX
+
 
     // Reset all other game state variables
     this.scoreLeft = 0;
@@ -220,10 +222,25 @@ this.rightLauncher = createLauncher(this, 'right', arena.bounds, {
 });
 console.log('Right launcher created:', this.rightLauncher);
 
-      // --- AI Opponent ---
-        if (this.playerCount < 2) {
-            this.opponent = new OpponentController(this, this.rightLauncher);
+      // --- AI Opponent Setup ---
+this.opponents = []; // Use an array to hold all AI controllers
+
+if (this.playerCount === 0) {
+    // 0 Players: AI vs AI
+    this.opponents.push(new OpponentController(this, this.leftLauncher, 'left'));
+    this.opponents.push(new OpponentController(this, this.rightLauncher, 'right'));
+    console.log('Created AI for Left and Right launchers.');
+
+} else if (this.playerCount === 1) {
+     // 1 Player: Create AI for the non-human side
+        if (this.humanPlayerSide === 'left') {
+            this.opponents.push(new OpponentController(this, this.rightLauncher, 'right'));
+            console.log('Created AI for Right Launcher.');
+        } else {
+            this.opponents.push(new OpponentController(this, this.leftLauncher, 'left'));
+            console.log('Created AI for Left Launcher.');
         }
+}
 
       this.keys = this.input.keyboard.addKeys({
      leftUp: 'W', leftDown: 'S',
@@ -504,23 +521,32 @@ console.log('Right launcher created:', this.rightLauncher);
 
 
   update(time, delta) {
-    // Prevent any updates if the game is not in the 'playing' state
     if (this.gameState !== 'playing') return;
 
-    // --- Player 1 Controls ---
     const step = 0.03;
-    if (this.keys.leftUp.isDown)   this.leftLauncher.setAngle(this.leftLauncher.getAngle() - step);
-    if (this.keys.leftDown.isDown) this.leftLauncher.setAngle(this.leftLauncher.getAngle() + step);
 
-    // --- Right Side Controls ---
-    if (this.playerCount === 2) {
-        // Player 2 controls if it's a 2-player game
+    // --- Player & AI Controls ---
+    if (this.playerCount === 1) {
+        // 1 Player Game
+        if (this.humanPlayerSide === 'left') {
+            if (this.keys.leftUp.isDown)   this.leftLauncher.setAngle(this.leftLauncher.getAngle() - step);
+            if (this.keys.leftDown.isDown) this.leftLauncher.setAngle(this.leftLauncher.getAngle() + step);
+        } else { // Human is on the right
+            if (this.keys.rightUp.isDown)  this.rightLauncher.setAngle(this.rightLauncher.getAngle() - step);
+            if (this.keys.rightDown.isDown)this.rightLauncher.setAngle(this.rightLauncher.getAngle() + step);
+        }
+    } else if (this.playerCount === 2) {
+        // 2 Player Game
+        if (this.keys.leftUp.isDown)   this.leftLauncher.setAngle(this.leftLauncher.getAngle() - step);
+        if (this.keys.leftDown.isDown) this.leftLauncher.setAngle(this.leftLauncher.getAngle() + step);
         if (this.keys.rightUp.isDown)  this.rightLauncher.setAngle(this.rightLauncher.getAngle() - step);
         if (this.keys.rightDown.isDown)this.rightLauncher.setAngle(this.rightLauncher.getAngle() + step);
-    } else if (this.opponent) {
-        // AI controls if an opponent exists
-        this.opponent.update(time, delta);
     }
+
+    // Update all active AI opponents
+    this.opponents.forEach(opponent => {
+        opponent.update(time, delta);
+    });
 }
 
   handleGameOver(winner) {

@@ -1,12 +1,16 @@
 // src/ai/OpponentController.js
 
 export class OpponentController {
-    constructor(scene, launcher) {
+    constructor(scene, launcher, side) {
         this.scene = scene;
         this.launcher = launcher;
+        this.side = side; // 'left' or 'right'
         this.cooldown = 0;
-    }
 
+        // Determine which ammo and text objects to use based on the side
+        this.ammoProperty = side === 'left' ? 'launcherLeftAmmo' : 'launcherRightAmmo';
+        this.ammoTextObject = side === 'left' ? this.scene.ammoLeftText : this.scene.ammoRightText;
+    }
 
     findClosestPuck() {
         const pucks = [this.scene.puck, this.scene.triPuck];
@@ -43,7 +47,6 @@ export class OpponentController {
         return closestPuck;
     }
 
-
     update(time, delta) {
         // 1. Cooldown Logic: If the AI is on cooldown, do nothing.
         if (this.cooldown > 0) {
@@ -52,16 +55,17 @@ export class OpponentController {
         }
 
         // 2. Ammunition Management: If out of ammo, attempt to reload.
-        if (this.scene.launcherRightAmmo === 0) {
-            // Find a ball that has been scored in the AI's goal trough.
+        // It now checks the correct ammo property ('launcherLeftAmmo' or 'launcherRightAmmo')
+        if (this.scene[this.ammoProperty] === 0) {
+            // It now checks for balls attracted to the correct side ('left' or 'right')
             const attractedBallBody = this.scene.matter.world.getAllBodies().find(body =>
-                body.gameObject?.attractedTo === 'right'
+                body.gameObject?.attractedTo === this.side
             );
 
             // If a ball is available, "reload" it.
             if (attractedBallBody) {
-                this.scene.launcherRightAmmo++;
-                this.scene.ammoRightText.setText(`Ammo: ${this.scene.launcherRightAmmo}`);
+                this.scene[this.ammoProperty]++;
+                this.ammoTextObject.setText(`Ammo: ${this.scene[this.ammoProperty]}`);
 
                 // Remove the reloaded ball from the game.
                 this.scene.matter.world.remove(attractedBallBody);
@@ -90,8 +94,8 @@ export class OpponentController {
 
             // Execute the fire command.
             this.launcher.fireBall();
-            this.scene.launcherRightAmmo--;
-            this.scene.ammoRightText.setText(`Ammo: ${this.scene.launcherRightAmmo}`);
+            this.scene[this.ammoProperty]--;
+            this.ammoTextObject.setText(`Ammo: ${this.scene[this.ammoProperty]}`);
 
             // 5. Set Cooldown: Prevent the AI from firing again immediately.
             this.cooldown = 500; // 500ms cooldown.
