@@ -4,6 +4,7 @@ import { createArena } from '/factories/arenaFactory.js';
 import { createLauncher, } from '/factories/launcherFactory.js';
 import { createAttractor } from '/factories/attractorFactory.js';
 import { createRepulsor } from '/factories/repulsorFactory.js';
+import { OpponentController } from '/src/ai/OpponentController.js';
 
 export class PlayScene extends Phaser.Scene {
   constructor() {
@@ -151,8 +152,10 @@ export class PlayScene extends Phaser.Scene {
     this.ammoLeftText = this.add.text(16, 50, `Ammo: ${this.launcherLeftAmmo}`, { fontSize: '24px', fill: '#FFF' });
     this.ammoRightText = this.add.text(this.cameras.main.width - 200, 50, `Ammo: ${this.launcherRightAmmo}`, { fontSize: '24px', fill: '#FFF' });
     
+
+
     // --- CAMERA AUTO-FIT + STATIC POSITIONING ---
-if (this.arena?.bounds) {
+    if (this.arena?.bounds) {
     // Destructure the arena's outer boundaries for clarity.
     const { xOuterLeft, xOuterRight, yTop, yBot } = this.arena.bounds;
 
@@ -193,6 +196,8 @@ if (this.arena?.bounds) {
     this.cameras.main.centerOn(centerX, centerY);
 
     // Camera is now static and correctly positioned. No follow or bounds needed.
+
+    
 }
 
 
@@ -214,6 +219,11 @@ this.rightLauncher = createLauncher(this, 'right', arena.bounds, {
   exitOffset: 40   // pulls spawn point 10px back into the barrel
 });
 console.log('Right launcher created:', this.rightLauncher);
+
+      // --- AI Opponent ---
+        if (this.playerCount < 2) {
+            this.opponent = new OpponentController(this, this.rightLauncher);
+        }
 
       this.keys = this.input.keyboard.addKeys({
      leftUp: 'W', leftDown: 'S',
@@ -493,30 +503,25 @@ console.log('Right launcher created:', this.rightLauncher);
 
 
 
-  update() {
-    // Add debug overlay if desired
-  // this.debugGraphics.clear();
-// this.debugGraphics.lineStyle(2, 0xff0000);
-// const exit = this.leftLauncher.getExitPoint();
-// const pivot = this.leftLauncher.pivot.position;
-// console.log('Pivot:', pivot.x, pivot.y, 'Exit:', exit.x, exit.y);
-// this.debugGraphics.lineBetween(
- //  this.leftLauncher.pivot.position.x,
- //  this.leftLauncher.pivot.position.y,
- //  exit.x,
- //  exit.y
-// );
-// Prevent any updates if the game is not in the 'playing' state
+  update(time, delta) {
+    // Prevent any updates if the game is not in the 'playing' state
     if (this.gameState !== 'playing') return;
 
-
-    //Launcher Listeners
+    // --- Player 1 Controls ---
     const step = 0.03;
-    if (this.keys.leftUp.isDown)   this.leftLauncher.setAngle(this.leftLauncher.getAngle() - step); 
+    if (this.keys.leftUp.isDown)   this.leftLauncher.setAngle(this.leftLauncher.getAngle() - step);
     if (this.keys.leftDown.isDown) this.leftLauncher.setAngle(this.leftLauncher.getAngle() + step);
-    if (this.keys.rightUp.isDown)  this.rightLauncher.setAngle(this.rightLauncher.getAngle() - step);
-    if (this.keys.rightDown.isDown)this.rightLauncher.setAngle(this.rightLauncher.getAngle() + step);
-  }
+
+    // --- Right Side Controls ---
+    if (this.playerCount === 2) {
+        // Player 2 controls if it's a 2-player game
+        if (this.keys.rightUp.isDown)  this.rightLauncher.setAngle(this.rightLauncher.getAngle() - step);
+        if (this.keys.rightDown.isDown)this.rightLauncher.setAngle(this.rightLauncher.getAngle() + step);
+    } else if (this.opponent) {
+        // AI controls if an opponent exists
+        this.opponent.update(time, delta);
+    }
+}
 
   handleGameOver(winner) {
     // Stop any active countdown timer to prevent state conflicts
@@ -558,6 +563,8 @@ console.log('Right launcher created:', this.rightLauncher);
     this.gameOverUI.add(bg);
     this.gameOverUI.add(winTextObject);
     this.gameOverUI.add(restartTextObject);
+
+    
   }
 
 }
