@@ -71,7 +71,7 @@ export class InputManager {
   }
 
   update() {
-    const step = 0.03;
+    const step = 0.01;
 
     if (this.playerCount === 1) {
         if (this.humanPlayerSide === 'left') {
