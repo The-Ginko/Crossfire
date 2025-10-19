@@ -8,38 +8,38 @@ export class OpponentController {
         this.cooldown = 0;
     }
 
-    findClosestPuck() {
-        const pucks = [this.scene.puck, this.scene.triPuck];
+         findClosestPuck() {
+        // Safety check to ensure the puck objects exist on the scene.
+        if (!this.scene.puck || !this.scene.triPuck) {
+            return null;
+        }
+
+        // Create a list of the actual puck game objects.
+        const pucks = [this.scene.puck.star, this.scene.triPuck.tri];
         let closestPuck = null;
         let minDistance = Infinity;
 
         for (const puck of pucks) {
-            if (puck && puck.star && puck.star.body) { // Check for star puck
-                const distance = Phaser.Math.Distance.Between(
-                    this.launcher.pivot.position.x,
-                    this.launcher.pivot.position.y,
-                    puck.star.body.position.x,
-                    puck.star.body.position.y
-                );
+            // --- THE FIX ---
+            // If the puck is invalid, destroyed, or already scored (attracted),
+            // skip it and move to the next potential target.
+            if (!puck || !puck.body || puck.attracted) {
+                continue;
+            }
 
-                if (distance < minDistance) {
-                    minDistance = distance;
-                    closestPuck = puck.star;
-                }
-            } else if (puck && puck.tri && puck.tri.body) { // Check for triangle puck
-                const distance = Phaser.Math.Distance.Between(
-                    this.launcher.pivot.position.x,
-                    this.launcher.pivot.position.y,
-                    puck.tri.body.position.x,
-                    puck.tri.body.position.y
-                );
+            const distance = Phaser.Math.Distance.Between(
+                this.launcher.pivot.position.x,
+                this.launcher.pivot.position.y,
+                puck.body.position.x,
+                puck.body.position.y
+            );
 
-                if (distance < minDistance) {
-                    minDistance = distance;
-                    closestPuck = puck.tri;
-                }
+            if (distance < minDistance) {
+                minDistance = distance;
+                closestPuck = puck;
             }
         }
+        
         return closestPuck;
     }
 

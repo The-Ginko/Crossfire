@@ -22,8 +22,15 @@ export class CollisionManager {
       
       const isLeftSensor = (bodyA.label === 'goal_left' || bodyB.label === 'goal_left');
       const isRightSensor = (bodyA.label === 'goal_right' || bodyB.label === 'goal_right');
+      const isRepulsorSensor = (bodyA.label === 'repulsorSensor' || bodyB.label === 'repulsorSensor');
 
       // --- Process the collision based on who hit what ---
+
+      // If a ball hits the repulsor's SENSOR, mark it as "in play".
+      if (ball && isRepulsorSensor && !ball.isInPlay) {
+          ball.isInPlay = true;
+      }
+      
       if (isLeftSensor || isRightSensor) {
         const side = isLeftSensor ? 'left' : 'right';
 
@@ -59,7 +66,8 @@ export class CollisionManager {
   }
 
   _handleBallSensorCollision(ball, side) {
-    if (ball && !ball.attracted) {
+    // A ball can only be captured if it has entered the playfield and is not already captured.
+    if (ball && ball.isInPlay && !ball.attracted) {
       // Apply visual and physics changes to the ball
       ball.attracted = true;
       ball.attractedTo = side; // Tag the ball for the correct trough
@@ -68,6 +76,10 @@ export class CollisionManager {
       // Set a different tint based on the goal it entered
       const tint = side === 'left' ? 0xff0000 : 0xfe9900; // Red for left, Orange for right
       ball.setTint(tint);
+
+      // This call was removed as it was calling a non-existent function and was redundant.
+      // All necessary state changes are handled directly above.
     }
   }
 }
+

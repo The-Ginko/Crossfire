@@ -23,7 +23,9 @@ export function createBall(scene, x, y, textureKey = 'ball0', {
 
   ball.isBall = true;
   ball.attracted = false;
+  ball.isInPlay = false;    // Has this ball entered the main playfield?
 
+  
   if (ball.body) {
     ball.body.collisionFilter.category = CATEGORY_BALL;
     ball.body.collisionFilter.mask =

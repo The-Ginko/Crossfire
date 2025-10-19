@@ -1,8 +1,6 @@
 // factories/repulsorFactory.js (Final Version Based on Sanity Check)
 
-import { CATEGORY_BALL, CATEGORY_PUCK } from '/src/config/collisionCategories.js';
-
-const CATEGORY_REPULSOR = 0x0080;
+import { CATEGORY_BALL, CATEGORY_PUCK, CATEGORY_REPULSOR } from '/src/config/collisionCategories.js';
 
 export function createRepulsor(scene, x, y, radius, troughAttractorRange) {
 
@@ -49,5 +47,19 @@ export function createRepulsor(scene, x, y, radius, troughAttractorRange) {
         ]
     });
 
+    // --- Create a parallel SENSOR body for collision detection ---
+    // This sensor mirrors the repulsor's position and radius but is a true sensor.
+    // Its only job is to fire a collision event when a ball enters the playfield.
+    scene.matter.add.circle(x, y, radius, {
+        label: 'repulsorSensor', // A new, unique label
+        isStatic: true,
+        isSensor: true,
+        collisionFilter: {
+            category: CATEGORY_REPULSOR, // Can reuse the category
+            mask: CATEGORY_BALL          // Only detects balls
+        }
+    });
+
     return repulsor;
 }
+
