@@ -9,6 +9,7 @@ import { UIManager } from '/src/managers/UIManager.js';
 import { InputManager } from '/src/managers/InputManager.js';
 import { GameStateManager } from '/src/managers/GameStateManager.js';
 import { CollisionManager } from '/src/managers/CollisionManager.js';
+import { DebugMenuManager } from '/src/managers/DebugMenuManager.js'; // Added per plan
 
 export class PlayScene extends Phaser.Scene {
   constructor() {
@@ -20,6 +21,7 @@ export class PlayScene extends Phaser.Scene {
     this.inputManager = null;
     this.gameStateManager = null;
     this.collisionManager = null;
+    this.debugMenuManager = null; // Added per plan
   }
 
   init(data) {
@@ -94,13 +96,17 @@ export class PlayScene extends Phaser.Scene {
     this.uiManager.createUI();
 
     this.gameStateManager = new GameStateManager(this);
-    this.gameStateManager.init({ gameMode: this.gameMode });
+    this.gameStateManager.init({ gameMode: this.gameMode, playerCount: this.playerCount });
 
     this.inputManager = new InputManager(this);
     this.inputManager.init({ playerCount: this.playerCount, humanPlayerSide: this.humanPlayerSide });
 
     this.collisionManager = new CollisionManager(this);
     this.collisionManager.init();
+
+    // Added per plan
+    this.debugMenuManager = new DebugMenuManager(this);
+    this.debugMenuManager.init();
 
 
     // --- CAMERA AUTO-FIT + STATIC POSITIONING ---
@@ -188,9 +194,17 @@ export class PlayScene extends Phaser.Scene {
   }
 
   update(time, delta) {
+    // The debug manager should always update to draw aiming lines.
+    this.debugMenuManager.update();
+
+    // Only run active game logic if the state is 'playing'
     if (this.gameStateManager.gameState !== 'playing') return;
 
+    // InputManager has its own internal check for the pause state
     this.inputManager.update();
+
+    // Prevent AI from updating while paused
+    if (this.gameStateManager.isPaused) return;
 
     // Update all active AI opponents
     this.opponents.forEach(opponent => {

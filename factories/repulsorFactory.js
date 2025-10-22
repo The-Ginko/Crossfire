@@ -32,6 +32,8 @@ export function createRepulsor(scene, x, y, radius, troughAttractorRange) {
                         acceleration = -0.00002;
                     } else if (bodyB.gameObject?.isBall) {
                         acceleration = -0.000005;
+                    } else if (bodyB.gameObject?.body?.label.startsWith('puck') && bodyB.gameObject?.attracted) {
+                        acceleration = -0.00004;
                     } else if (bodyB.gameObject?.body?.label.startsWith('puck')) {
                         acceleration = -0.00000005;
                     }

@@ -1,157 +1,45 @@
-Star Puck Raw has too many nodes, it causes the game to load slowly at the start.
-The Star Puck . png isn't square, it should be and it should match.
-Star Puck Raw should be fixed and a new Png should be generated from it or StarPuck.png needs to make a new SVG... Something
+Bugs:
 
-"🛠 Workflow: Re‑exporting a centered, square StarPuck PNG from the SVG
-1. Open the raw SVG
-Open StarPuck_Raw.svg in Inkscape (or Photopea if you prefer browser‑based).
+Mouse constraints interfere with mouse controls. Switch  to pause / debug toggle rather than always on.
 
-Make sure you’re looking at the actual <path> that defines the star.
 
-2. Fit the page to the artwork
-In Inkscape:
+Balls are tunnelling on rare occasions. Consider either upping iterations and / or adding a check for balls that have gone off screen to have 
+    them destroyed and respawned
 
-File → Document Properties → Resize page to drawing or selection.
 
-This trims the page to the star’s true bounding box.
+Improvements Needed:
 
-Now the star is exactly filling the page, no extra margins.
+Opponent Controller only has one AI pattern. This needs expansion.
+As it stands the aim is perfect, this should be adjustable to have a +/- on the aim angle
+As it stands there is no accounting for puck velocity, a loop should be added to add predictive aiming (aiming at where the puck will be, rather 
+    than where it is) and have that predictive aiming be adjustable
+As it stands there is only one cooldown speed. The cooldown should be adjustable to allow for faster and slower opponents.
+As it stands the AI only reloads when it's empty, it should model best practices and instead reload when there are balls in the trough.
+As it stands there is only one target logic (closest puck), there needs to be more aiming targets. Puck closest to scoring would allow for a 
+    more aggressive AI opponent.
+As it stands the AI doesn't check to see if the path is clear between the target and the launcher (e.g. there may be other pucks or balls in the way)
+    this should be added and adjustable.
+As it stands the AI can only operate on one logic loop, once we add more than one aiming logic we should allow for switching between, and adjustable
+    switching.
 
-3. Make the canvas square
-Still in Document Properties, set Width = Height to the larger of the two dimensions.
 
-Example: if the star’s bounds are 1448×1360, set both to 1448.
+    Reloading:
+One by one ball loading isn't satisfactory. Add multiple ball loading per key press. Allow for the number of balls to be both dynamic (e.g. 2+1d3), 
+    and adjustable. Make sure that it's adjustable for the AI.
 
-The star will now be centered horizontally but may sit off vertically.
+Consider adding a jamming function where the liklihood increases with the number of balls loaded per press, with an unjamming quicktime.
+    (e.g. wiggle the shooter, or tap the reload button - to unjam)
 
-4. Center the star on the new square canvas
-Select the star path.
 
-Use Object → Align and Distribute (Shift+Ctrl+A).
 
-Choose Relative to: Page.
-
-Click Center on vertical axis and Center on horizontal axis.
-
-Now the star is dead‑center in a square canvas.
-
-5. Export to PNG
-File → Export PNG Image (Shift+Ctrl+E).
-
-Export Area: Page.
-
-Size: set to your target (e.g. 512×512, 1024×1024).
-
-Background: transparent.
-
-Export.
-
-6. Verify
-Open the PNG in Photopea or your engine.
-
-Drop guides at half the width/height — the star should be perfectly centered.
-
-In Matter.js, with setOrigin(0.5,0.5), the sprite and SVG‑derived body will now align.
-
-⚖️ Why this works
-The SVG path defines the body.
-
-By exporting the PNG from the same SVG, with the page resized and centered, you guarantee both assets share the same coordinate system.
-
-No more oddball aspect ratios, no more guessing offsets.
-
-👉 Once you do this once, you’ll have a square, centered StarPuck.png that matches your SVG body exactly. From there, your code can stay clean: setOrigin(0.5,0.5) and no offsets."
-
-
-
-Here’s a focused next‑steps checklist to carry the arena from “feature‑complete” to “game‑ready,” with an eye toward launcher integration and polish:
-
-🎯 Physics & Geometry
-Launcher integration test:
-
-Drop in a prototype launcher and fire test balls.
-
-Observe how balls interact with wedges and throat diagonals.
-
-Adjust wedgeLongSide until the funneling feels authentic.
-
-Collision smoothing:
-
-Check for any micro‑gaps between wedges, walls, and sensors.
-
-Add tiny overlaps or chamfers if balls snag.
-
-Scaling validation:
-
-Scale arena up/down by changing puckSpanPx.
-
-Confirm all proportions (walls, wedges, sensors) remain consistent.
-
-🎨 Visual Alignment
-Overlay debug graphics:
-
-Draw outlines of wedges, walls, and sensors with Phaser graphics.
-
-Verify colinearity visually before importing art assets.
-
-Asset alignment:
-
-Once art is ready, ensure sprites line up with physics bodies.
-
-Adjust offsets or anchor points if needed.
-
-⚙️ Gameplay Tuning
-Ball flow tests:
-
-Launch balls at different angles/speeds.
-
-Confirm they funnel reliably into goals without bouncing out.
-
-Sensor accuracy:
-
-Verify sensors trigger only when balls fully cross the goal line.
-
-Adjust sensor width if false positives/negatives occur.
-
-Back wall rebound:
-
-Check that balls hitting the back wall behave as expected (no clipping or sticking).
-
-🛠️ Future‑proofing
-Parameter centralization:
-
-Keep wedgeLongSide, wedgeHRequired, goalDepth, throatInset at the top of the file.
-
-This ensures all future tweaks are one‑line changes.
-
-Logging hooks:
-
-Maintain console logs for wedge vertices and centroids until geometry is locked.
-
-Remove or gate them behind a debug flag later.
-
-Launcher geometry coupling:
-
-Plan to tie wedgeLongSide to launcher mouth width or ball trajectory envelope once those are finalized.
-
-✅ Final polish checklist before “done”
-[ ] Wedges funnel balls cleanly into sensors.
-
-[ ] No visible seams between wedges and walls.
-
-[ ] Long side length tuned to launcher geometry.
-
-[ ] All dimensions scale correctly with puck size.
-
-[ ] Visual assets align pixel‑perfect with physics bodies.
-
-
-
-Keep a simple table (in comments or a separate doc) that shows which categories collide with which. This is your “street map” for masks.
-
-Category	Hex/Bit	Collides With (mask includes…)
-BALL	0x0001	BALL, PUCK, ARENA, SENSOR, ATTRACTOR
-PUCK	0x0002	BALL, ARENA, SENSOR
-ARENA	0x0004	BALL, PUCK
-SENSOR	0x0008	BALL, PUCK
-ATTRACTOR	0x0010	BALL (but only pulls if ball.attracted = true)
+Player stats:
+    Loading: (Balls per press)
+        Jamming/unjamming - rof or loading?
+    Aiming
+    Rate of Fire
+        Jamming/unjamming -rof or loading?
+    Launcher power
+        Ball mass
+    Special Abilities
+        Defensive Powers
+    Special Balls

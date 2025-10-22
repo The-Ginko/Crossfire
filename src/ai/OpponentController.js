@@ -43,6 +43,7 @@ export class OpponentController {
         return closestPuck;
     }
 
+    
     update(time, delta) {
         // 1. Cooldown Logic: If the AI is on cooldown, do nothing.
         if (this.cooldown > 0) {
@@ -50,11 +51,13 @@ export class OpponentController {
             return;
         }
 
+        const currentAmmo = this.scene.gameStateManager.getAmmo(this.side);
+        
         // 2. Ammunition Management: If out of ammo, attempt to reload.
-        if ((this.scene.gameStateManager.launcherLeftAmmo === 0 && this.side === 'left') || (this.scene.gameStateManager.launcherRightAmmo === 0 && this.side === 'right')) {
-            this.scene.gameStateManager.reloadLauncher(this.side);
-            return; // Wait until next update cycle after attempting to reload.
-        }
+        if (currentAmmo === 0) {
+        this.scene.gameStateManager.reloadLauncher(this.side);
+        return; // Wait for next update cycle after requesting reload.
+    }
 
         // 3. Target Selection: Find a puck to shoot at.
         const target = this.findClosestPuck();
