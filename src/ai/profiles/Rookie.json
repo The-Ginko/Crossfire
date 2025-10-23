@@ -1,0 +1,30 @@
+{
+  "name": "Rookie",
+  "aiming": {
+    "errorMargin": 0.1,
+    "predictiveStrength": 0.0,
+    "checkLineOfSight": false,
+    "repulsorCompensation": 0.0,
+    "aimRotationSpeedCap": 1.5,
+    "aimRotationAcceleration": 3.0,
+    "canBounceShot": false,
+    "bounceShotChance": 0.0,
+    "maxBounces": 1,
+    "bounceAngleSearchRangeDeg": 60,
+    "bounceAngleSearchStepDeg": 10,
+    "bounceTargetTolerance": 15
+  },
+  "timing": {
+    "reactionDelay": 750,
+    "fireRate": 1000
+  },
+  "reloading": {
+    "strategy": "empty",
+    "threshold": 0
+  },
+  "targeting": {
+    "strategy": "closest",
+    "canCounter": false
+  }
+}
+

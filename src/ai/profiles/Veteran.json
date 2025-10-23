@@ -1,0 +1,30 @@
+{
+  "name": "Veteran",
+  "aiming": {
+    "errorMargin": 0.01,
+    "predictiveStrength": 0.8,
+    "checkLineOfSight": true,
+    "repulsorCompensation": 0.00005,
+    "aimRotationSpeedCap": 4.0,
+    "aimRotationAcceleration": 8.0,
+    "canBounceShot": true,
+    "bounceShotChance": 0.15,
+    "maxBounces": 1,
+    "bounceAngleSearchRangeDeg": 45,
+    "bounceAngleSearchStepDeg": 5,
+    "bounceTargetTolerance": 10
+  },
+  "timing": {
+    "reactionDelay": 200,
+    "fireRate": 500
+  },
+  "reloading": {
+    "strategy": "threshold",
+    "threshold": 5
+  },
+  "targeting": {
+    "strategy": "closestToGoal",
+    "canCounter": true
+  }
+}
+

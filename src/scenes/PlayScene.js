@@ -9,7 +9,9 @@ import { UIManager } from '/src/managers/UIManager.js';
 import { InputManager } from '/src/managers/InputManager.js';
 import { GameStateManager } from '/src/managers/GameStateManager.js';
 import { CollisionManager } from '/src/managers/CollisionManager.js';
-import { DebugMenuManager } from '/src/managers/DebugMenuManager.js'; // Added per plan
+import { DebugMenuManager } from '/src/managers/DebugMenuManager.js';
+import { AIPersonality } from '/src/ai/AIPersonality.js';
+import { PlayerBehaviorTracker } from '/src/managers/PlayerBehaviorTracker.js'; // --- NEW IMPORT ---
 
 export class PlayScene extends Phaser.Scene {
   constructor() {
@@ -21,7 +23,8 @@ export class PlayScene extends Phaser.Scene {
     this.inputManager = null;
     this.gameStateManager = null;
     this.collisionManager = null;
-    this.debugMenuManager = null; // Added per plan
+    this.debugMenuManager = null;
+    this.playerTracker = null; // --- NEW PROPERTY ---
   }
 
   init(data) {
@@ -52,6 +55,12 @@ export class PlayScene extends Phaser.Scene {
     this.load.image('bearing2', 'assets/bearing2.png');
     this.load.image('TrianglePuck', 'assets/TrianglePuck.png');
     this.load.xml('TrianglePuck_Raw', 'assets/TrianglePuck_Raw.svg');
+
+    // --- AI Profiles ---
+    this.load.json('defaultProfile', 'src/ai/profiles/default.json');
+    this.load.json('rookieProfile', 'src/ai/profiles/rookie.json');
+    this.load.json('veteranProfile', 'src/ai/profiles/veteran.json');
+    this.load.json('tricksterProfile', 'src/ai/profiles/trickster.json');
   }
 
   create() {
@@ -104,9 +113,15 @@ export class PlayScene extends Phaser.Scene {
     this.collisionManager = new CollisionManager(this);
     this.collisionManager.init();
 
-    // Added per plan
     this.debugMenuManager = new DebugMenuManager(this);
     this.debugMenuManager.init();
+
+    // --- NEW: Player Tracker ---
+    this.playerTracker = new PlayerBehaviorTracker(this);
+    // Tell the tracker which side the human is on
+    const humanSide = (this.playerCount === 1) ? this.humanPlayerSide : 'none';
+    this.playerTracker.init(humanSide);
+    // --- END NEW ---
 
 
     // --- CAMERA AUTO-FIT + STATIC POSITIONING ---
@@ -147,14 +162,38 @@ export class PlayScene extends Phaser.Scene {
 
       // --- AI Opponent Setup ---
     this.opponents = [];
+    const rookieProfile = this.cache.json.get('rookieProfile');
+    const veteranProfile = this.cache.json.get('veteranProfile');
+    const tricksterProfile = this.cache.json.get('tricksterProfile');
+
+    // --- NEW: Safety checks ---
+    if (!rookieProfile) {
+        console.error("[PlayScene] CRITICAL: 'rookieProfile' JSON not found in cache. AI will fail.");
+    }
+    if (!veteranProfile) {
+        console.error("[PlayScene] CRITICAL: 'veteranProfile' JSON not found in cache. AI will fail.");
+    }
+    if (!tricksterProfile) {
+        console.error("[PlayScene] CRITICAL: 'tricksterProfile' JSON not found in cache. AI will fail.");
+    }
+    // --- END NEW ---
+
     if (this.playerCount === 0) {
-        this.opponents.push(new OpponentController(this, this.leftLauncher, 'left'));
-        this.opponents.push(new OpponentController(this, this.rightLauncher, 'right'));
+        // 0-Player (AI vs AI): Rookie vs Veteran for testing
+        const leftPersonality = new AIPersonality(this, this.leftLauncher, 'left', rookieProfile);
+        this.opponents.push(new OpponentController(leftPersonality));
+        
+        const rightPersonality = new AIPersonality(this, this.rightLauncher, 'right', veteranProfile);
+        this.opponents.push(new OpponentController(rightPersonality));
+
     } else if (this.playerCount === 1) {
+        // 1-Player (Human vs AI): Player vs Rookie
         if (this.humanPlayerSide === 'left') {
-            this.opponents.push(new OpponentController(this, this.rightLauncher, 'right'));
+            const rightPersonality = new AIPersonality(this, this.rightLauncher, 'right', rookieProfile);
+            this.opponents.push(new OpponentController(rightPersonality));
         } else {
-            this.opponents.push(new OpponentController(this, this.leftLauncher, 'left'));
+            const leftPersonality = new AIPersonality(this, this.leftLauncher, 'left', rookieProfile);
+            this.opponents.push(new OpponentController(leftPersonality));
         }
     }
 
@@ -191,6 +230,12 @@ export class PlayScene extends Phaser.Scene {
     // 3. Create and assign the new pucks
     this.puck = createStarPuck(this, cx, cy);
     this.triPuck = createTrianglePuck(this, cx + 300, cy);
+
+    // --- NEW: Reset player tracker ---
+    if (this.playerTracker) {
+        this.playerTracker.reset();
+    }
+    // --- END NEW ---
   }
 
   update(time, delta) {
@@ -212,4 +257,3 @@ export class PlayScene extends Phaser.Scene {
     });
   }
 }
-

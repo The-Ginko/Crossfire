@@ -1,0 +1,27 @@
+{
+  "name": "Default",
+  "description": "Base profile mirroring the original hard-coded AI. This file is loaded but not yet used for logic in Phase 1.",
+  "aiming": {
+    "predictiveStrength": 0.0,
+    "errorMargin": 0.0,
+    "bias": "none"
+  },
+  "timing": {
+    "reactionDelay": 0,
+    "fireRate": 500
+  },
+  "reloading": {
+    "strategy": "empty",
+    "threshold": 0
+  },
+  "targeting": {
+    "strategy": "closest"
+  },
+  "risk": {
+    "checkLineOfSight": false
+  },
+  "special": {
+    "canCounter": false,
+    "canBounceShot": false
+  }
+}

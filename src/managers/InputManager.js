@@ -70,7 +70,17 @@ export class InputManager {
     this.scene.input.keyboard.on('keydown-P', () => this.scene.gameStateManager.togglePause());
   }
 
-  handleFire(side) { this.scene.gameStateManager.fireLauncher(side); }
+  handleFire(side) {
+    // --- THIS IS THE NEW LOGIC ---
+    // Check if this shot is from the human player
+    const isHumanShot = (this.playerCount === 1 && side === this.humanPlayerSide) ||
+                          (this.playerCount === 2); // In 2P, both are human
+
+    // We pass this info to the GameStateManager
+    const fired = this.scene.gameStateManager.fireLauncher(side, isHumanShot);
+    // --- END NEW LOGIC ---
+  }
+
   handleReload(side) { this.scene.gameStateManager.reloadLauncher(side); }
 
   handleRestart() {
@@ -147,4 +157,3 @@ export class InputManager {
     if (downKey.isDown) launcher.setAngle(launcher.getAngle() + currentStep);
   }
 }
-

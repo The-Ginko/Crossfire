@@ -64,21 +64,54 @@ export class GameStateManager {
     }
   }
 
-  fireLauncher(side) {
-    if (this.gameState !== 'playing' || this.isPaused) return;
+  /**
+   * Fires a launcher and tracks if it was a human shot.
+   * @param {string} side - 'left' or 'right'
+   * @param {boolean} [isHumanShot=false] - Was this shot fired by a human?
+   * @returns {boolean} - True if a shot was fired, false otherwise.
+   */
+  fireLauncher(side, isHumanShot = false) {
+    if (this.gameState !== 'playing' || this.isPaused) return false;
 
+    let fired = false;
     if (side === 'left' && this.ammoLeft > 0) {
       this.scene.leftLauncher.fireBall();
       this.ammoLeft--;
+      fired = true;
     } else if (side === 'right' && this.ammoRight > 0) {
       this.scene.rightLauncher.fireBall();
       this.ammoRight--;
+      fired = true;
     }
-    this.scene.uiManager.updateAmmo(this.ammoLeft, this.ammoRight);
+
+    if (fired) {
+      this.scene.uiManager.updateAmmo(this.ammoLeft, this.ammoRight);
+      
+      // --- THIS IS THE NEW LOGIC ---
+      // If a human fired, tell the tracker.
+      if (isHumanShot && this.scene.playerTracker) {
+        this.scene.playerTracker.recordHumanShot();
+      }
+      // --- END NEW LOGIC ---
+    }
+    
+    return fired; // Return success
   }
 
+  isBallInTrough(side) {
+    const attractedBallBody = this.scene.matter.world.getAllBodies().find(body =>
+      body.gameObject?.attractedTo === side
+    );
+    return !!attractedBallBody; // Returns true if a body is found, false if not
+  }
+  
+  /**
+   * Reloads a launcher from the trough.
+   * @param {string} side - 'left' or 'right'
+   * @returns {boolean} - True if a reload was successful, false otherwise.
+   */
   reloadLauncher(side) {
-    if (this.gameState !== 'playing' || this.isPaused) return;
+    if (this.gameState !== 'playing' || this.isPaused) return false;
 
     const attractedBallBody = this.scene.matter.world.getAllBodies().find(body =>
       body.gameObject?.attractedTo === side
@@ -96,7 +129,10 @@ export class GameStateManager {
       if (attractedBallBody.gameObject) {
         attractedBallBody.gameObject.destroy();
       }
+      return true; // Reload was successful
     }
+    
+    return false; // No ball to reload
   }
   
   puckScored(side, puckGameObject) {
@@ -138,4 +174,3 @@ export class GameStateManager {
       return side === 'left' ? this.ammoLeft : this.ammoRight;
   }
 }
-

@@ -1,0 +1,30 @@
+{
+  "name": "Trickster",
+  "aiming": {
+    "errorMargin": 0.05,
+    "predictiveStrength": 0.5,
+    "checkLineOfSight": true,
+    "repulsorCompensation": 0.00006,
+    "aimRotationSpeedCap": 3.0,
+    "aimRotationAcceleration": 6.0,
+    "canBounceShot": true,
+    "bounceShotChance": 1,
+    "maxBounces": 1,
+    "bounceAngleSearchRangeDeg": 70,
+    "bounceAngleSearchStepDeg": 7,
+    "bounceTargetTolerance": 12
+  },
+  "timing": {
+    "reactionDelay": 400,
+    "fireRate": 800
+  },
+  "reloading": {
+    "strategy": "threshold",
+    "threshold": 3
+  },
+  "targeting": {
+    "strategy": "closest",
+    "canCounter": false
+  }
+}
+
